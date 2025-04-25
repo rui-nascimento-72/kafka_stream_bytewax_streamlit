@@ -1,7 +1,28 @@
+FROM python:3.11-slim
 
-FROM python:3.13
+# Install system dependencies for Python and Rust
+RUN apt-get update && apt-get install -y \
+    curl \
+    build-essential \
+    pkg-config \
+    libssl-dev \
+    git \
+    ca-certificates
+
+# Install rust using rustup
+RUN curl https://sh.rustup.rs -sSf | bash -s -- -y
+ENV PATH="/root/.cargo/bin:$PATH"
+
+# Confirm Rust installation
+RUN rustc --version && cargo --version
+
 WORKDIR /app
-COPY requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy requirements and install
+COPY requirements.txt .
+RUN pip install --upgrade pip && pip install --no-cache-dir -r requirements.txt
+
+# Copy app code
 COPY bytewax_processor.py .
+
 CMD ["python", "bytewax_processor.py"]

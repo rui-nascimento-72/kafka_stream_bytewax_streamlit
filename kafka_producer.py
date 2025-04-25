@@ -11,11 +11,11 @@ producer = KafkaProducer(
 
 while True:
     event = {
-        "sensor_id": random.randint(1, 5),
-        "temperature": round(random.uniform(20, 30), 2),
-        "humidity": round(random.uniform(40, 60), 2),
+        "order_id": int(time.time() * 1000),
+        "book_reference": random.randint(1, 1000),
+        "quantity": random.randint(1, 5),
         "timestamp": time.time()
     }
-    producer.send('sensor-data', value=event)
+    producer.send('book-orders', value=event)
     print("Sent:", event)
     time.sleep(2)

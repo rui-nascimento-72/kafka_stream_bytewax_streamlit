@@ -1,4 +1,0 @@
-
-bytewax
-kafka-python
-streamlit
