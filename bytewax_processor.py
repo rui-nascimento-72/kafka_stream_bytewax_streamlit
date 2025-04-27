@@ -1,25 +1,26 @@
-
-from bytewax import Dataflow, run_main
+from bytewax.dataflow import Dataflow
 from bytewax.connectors.kafka import KafkaSource
+from bytewax.operators import input, map, sink
 import json
 import os
 
 os.makedirs("data", exist_ok=True)
 
-topic = "sensor-data"
-brokers = ["kafka:9092"]
-source = KafkaSource(brokers, topic, "bytewax-group")
+flow = Dataflow("sensor-pipeline")
 
-flow = Dataflow()
-flow.input("input", source)
+source = KafkaSource(
+    brokers=["kafka:9092"],
+    topics=["sensor-data"],
+    group_id="bytewax-group"
+)
 
-def to_json_file(event):
-    value = json.loads(event[1])
-    with open("data/latest.json", "w") as f:
-        json.dump(value, f)
-    return value
+stream = input("input", flow, source)
+stream = map(stream, mapper=lambda kv: json.loads(kv[1]))
 
-flow.map(to_json_file)
+def file_sink(_worker_index, _worker_count):
+    def write_json(record):
+        with open("data/latest.json", "w") as f:
+            json.dump(record, f)
+    return write_json
 
-if __name__ == "__main__":
-    run_main(flow)
+sink(stream, file_sink)

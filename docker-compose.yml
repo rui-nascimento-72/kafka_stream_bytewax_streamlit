@@ -1,3 +1,4 @@
+version: '3.8'
 
 services:
   zookeeper:
@@ -28,6 +29,14 @@ services:
       - kafka
     restart: always
 
+  producer:
+    build:
+      context: .
+      dockerfile: Dockerfile.producer
+    depends_on:
+      - kafka
+    restart: always
+
   streamlit:
     build:
       context: .
@@ -36,12 +45,4 @@ services:
       - "8501:8501"
     volumes:
       - ./data:/app/data
-    restart: always
-
-  producer:
-    build:
-      context: .
-      dockerfile: Dockerfile.producer
-    depends_on:
-      - kafka
     restart: always

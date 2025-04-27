@@ -1,4 +1,3 @@
-
 from kafka import KafkaProducer
 import json
 import time
@@ -11,11 +10,11 @@ producer = KafkaProducer(
 
 while True:
     event = {
-        "order_id": int(time.time() * 1000),
-        "book_reference": random.randint(1, 1000),
-        "quantity": random.randint(1, 5),
+        "sensor_id": random.randint(1, 5),
+        "temperature": round(random.uniform(20, 30), 2),
+        "humidity": round(random.uniform(40, 60), 2),
         "timestamp": time.time()
     }
-    producer.send('book-orders', value=event)
+    producer.send("sensor-data", value=event)
     print("Sent:", event)
     time.sleep(2)
