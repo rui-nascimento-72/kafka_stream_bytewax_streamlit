@@ -21,6 +21,6 @@ WORKDIR /app
 
 RUN pip install --no-cache-dir git+https://github.com/bytewax/bytewax.git@main confluent-kafka
 
-COPY bytewax_processor.py .
+COPY ./app/bytewax_processor.py .
 
-CMD ["python", "bytewax_processor.py"]
+CMD ["python", "-m", "bytewax.run", "bytewax_processor:flow"]
