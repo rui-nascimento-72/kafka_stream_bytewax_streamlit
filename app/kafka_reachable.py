@@ -1,7 +1,7 @@
 from confluent_kafka import Consumer, TopicPartition, OFFSET_BEGINNING
 
 conf = {
-    "bootstrap.servers": "localhost:9092",
+    "bootstrap.servers": "kafka:9092",
     "group.id": "debugger",
     "auto.offset.reset": "earliest"
 }
