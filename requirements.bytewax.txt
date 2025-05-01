@@ -1,2 +1,2 @@
-bytewax==0.16.2
+bytewax==0.21.1
 confluent-kafka
