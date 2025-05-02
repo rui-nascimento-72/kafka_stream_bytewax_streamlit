@@ -2,6 +2,7 @@ from kafka import KafkaProducer
 import json
 import time
 import random
+import uuid
 
 while True:
     try:
@@ -16,7 +17,7 @@ while True:
 
 while True:
     event = {
-        "order_id": random.randint(1, 1000),
+        "order_id": uuid.uuid4().int,
         "item_id": random.randint(1, 1000),
         "client_id": random.randint(1, 100),
         "quantity": random.randint(1, 5),

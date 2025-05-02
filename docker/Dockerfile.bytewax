@@ -1,26 +1,27 @@
 FROM python:3.11-slim
 
-RUN apt-get update && apt-get install -y \
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     build-essential \
     pkg-config \
     libssl-dev \
     libz-dev \
     librdkafka-dev \
-    git \
-    ca-certificates
-
-RUN apt-get update && apt-get install -y \
-    curl build-essential pkg-config libssl-dev libz-dev librdkafka-dev
-
-# Install Rust (for bytewax compilation)
-RUN curl https://sh.rustup.rs -sSf | bash -s -- -y
-ENV PATH="/root/.cargo/bin:$PATH"
+    ca-certificates \
+ && apt-get clean \
+ && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-RUN pip install --no-cache-dir git+https://github.com/bytewax/bytewax.git@main confluent-kafka
-
+# Copy your code before installing dependencies (cache-friendly)
 COPY ./app/bytewax_processor.py .
 
+# Install Python packages including Bytewax 0.21.1 from PyPI
+RUN pip install --upgrade pip \
+ && pip install --no-cache-dir \
+    bytewax==0.21.1 \
+    confluent-kafka
+
+# Run the Bytewax flow
 CMD ["python", "-m", "bytewax.run", "bytewax_processor:flow"]
