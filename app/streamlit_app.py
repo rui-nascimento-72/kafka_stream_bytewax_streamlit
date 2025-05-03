@@ -1,3 +1,4 @@
+# --- app.py ---
 import os
 import json
 import pandas as pd
@@ -14,7 +15,7 @@ LATEST_PATH = "data/latest.json"
 METRICS_PATH = "data/metrics.json"
 WINDOWS_PATH = "data/windows.json"
 
-# -- Load Aggregated Metrics --
+# -- Load Metrics
 try:
     with open(METRICS_PATH) as f:
         metrics = json.load(f)
@@ -24,7 +25,6 @@ try:
     col1.metric("🧾 Total Orders", metrics["order_count"])
     col2.metric("🧍 Clients", len(metrics["orders_by_client"]))
 
-    # --- Top Clients & Items
     clients_df = pd.DataFrame(
         list(metrics["orders_by_client"].items()),
         columns=["client_id", "total_quantity"]
@@ -59,70 +59,74 @@ try:
 except Exception as e:
     st.warning(f"⚠️ Could not load metrics: {e}")
 
-# -- Load and Show Latest Orders --
+# -- Load Latest Orders
 try:
     with open(LATEST_PATH) as f:
         data = json.load(f)
 
-    if not isinstance(data, list):
-        st.warning("⚠️ Order data is not a list.")
+    df = pd.DataFrame(data)
+    if "timestamp" not in df or df.empty:
+        st.warning("⚠️ No timestamp data in latest.json.")
         st.stop()
 
-    df = pd.DataFrame(data)
+    df["order_id"] = df["order_id"].astype(str)
 
-    if not df.empty:
-        df["timestamp"] = pd.to_datetime(df["timestamp"], unit="s")
-        st.subheader("🧾 Latest Orders")
-        st.dataframe(df.sort_values("timestamp", ascending=False), use_container_width=True)
-    else:
-        st.info("ℹ️ No orders to show.")
+    df["timestamp"] = pd.to_datetime(df["timestamp"], unit="s", errors="coerce")
+    df = df.dropna(subset=["timestamp"])
+
+    st.subheader("🧾 Latest Orders")
+    st.dataframe(df.sort_values("timestamp", ascending=False), use_container_width=True)
+
+    # -- 1-Minute Rolling Window Chart
+    df["window"] = df["timestamp"].dt.floor("1min")
+    windowed = df.groupby("window")["quantity"].sum().reset_index()
+
+    st.subheader("🪟 Quantity per 1-Minute Window")
+    line = alt.Chart(windowed).mark_line(point=True).encode(
+        x="window:T",
+        y="quantity:Q"
+    ).properties(height=300)
+    st.altair_chart(line, use_container_width=True)
+
+    # -- Histogram
+    # -- Histogram with Altair
+    st.subheader("📊 Histogram of Order Quantities")
+    quantity_hist_df = df["quantity"].value_counts().reset_index()
+    quantity_hist_df.columns = ["quantity", "count"]
+    quantity_hist_df = quantity_hist_df.sort_values("quantity")
+
+    hist_chart = alt.Chart(quantity_hist_df).mark_bar().encode(
+        x=alt.X("quantity:O", title="Quantity"),
+        y=alt.Y("count:Q", title="Number of Orders")
+    ).properties(
+      height=300,
+       title="Histogram of Order Quantities"
+    )
+
+    st.altair_chart(hist_chart, use_container_width=True)
+
 
 except Exception as e:
     st.error(f"❌ Failed to load order data: {e}")
 
-# -- Load and Show Real Windowed Aggregates --
+# -- Load Windowed Aggregates
 try:
     with open(WINDOWS_PATH) as f:
-        windows_data = json.load(f)
+        window_data = json.load(f)
 
-    if isinstance(windows_data, list) and windows_data:
-        window_df = pd.DataFrame(windows_data)
-        window_df["start"] = pd.to_datetime(window_df["start"])
-        window_df["end"] = pd.to_datetime(window_df["end"])
+    window_df = pd.DataFrame(window_data)
+    window_df["start"] = pd.to_datetime(window_df["start"], errors="coerce")
+    window_df["end"] = pd.to_datetime(window_df["end"], errors="coerce")
+    window_df = window_df.dropna(subset=["start", "end"])
 
-        st.subheader("🪟 Real 5-Minute Windowed Totals")
-        st.altair_chart(
-            alt.Chart(window_df)
-            .mark_line(point=True)
-            .encode(
-                x="start:T",
-                y="total_quantity:Q",
-                tooltip=["start:T", "end:T", "order_count", "total_quantity"]
-            )
-            .properties(height=300, title="Total Quantity per 5-Min Window"),
-            use_container_width=True
-        )
-    else:
-        st.info("ℹ️ No windowed data available yet.")
+    st.subheader("🪟 Aggregated Window Metrics")
+    st.line_chart(window_df.set_index("start")[["order_count", "total_quantity"]])
 
 except Exception as e:
     st.warning(f"⚠️ Could not load windowed data: {e}")
 
-# -- Histogram of Quantities --
-try:
-    if not df.empty:
-        st.subheader("📊 Histogram of Order Quantities")
-        fig, ax = plt.subplots()
-        ax.hist(df["quantity"], bins=range(1, df["quantity"].max() + 2), edgecolor="black")
-        ax.set_xlabel("Quantity")
-        ax.set_ylabel("Number of Orders")
-        st.pyplot(fig)
-except Exception as e:
-    st.warning(f"⚠️ Could not generate histogram: {e}")
-
-# -- Refresh Controls --
-st.markdown("---")
-if st.button("🔁 Refresh Now"):
+# -- Refresh controls
+if st.button("🔁 Refresh"):
     st.rerun()
 
 time.sleep(10)

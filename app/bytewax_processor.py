@@ -1,3 +1,4 @@
+# --- bytewax_processor.py ---
 import os
 import json
 from datetime import timedelta, datetime, timezone
@@ -33,7 +34,19 @@ def parse(msg):
 stream = map("parse", stream, parse)
 stream = op_filter("drop-none", stream, lambda x: x is not None)
 
-# --- STEP 2: Save to file ---
+# --- STEP 2: Normalize Timestamps ---
+def normalize_timestamp(msg):
+    ts = msg.get("timestamp")
+    if ts:
+        if ts > 1e12:
+            msg["timestamp"] = ts / 1000.0
+        elif ts > 1e9:
+            msg["timestamp"] = float(ts)
+    return msg
+
+stream = map("normalize-ts", stream, normalize_timestamp)
+
+# --- STEP 3: Save Raw Data ---
 def write_raw(_step_id, msg):
     os.makedirs("data", exist_ok=True)
     path = "data/latest.json"
@@ -51,7 +64,7 @@ def write_raw(_step_id, msg):
 
 inspect("save-latest", stream, write_raw)
 
-# --- STEP 3: Stateful Aggregation ---
+# --- STEP 4: Stateful Aggregation ---
 keyed = key_on("agg-key", stream, lambda _: "global")
 
 def update(state, msg):
@@ -82,17 +95,26 @@ def write_metrics(_step_id, item):
 
 inspect("metrics", agg, write_metrics)
 
-# --- STEP 4: 5-Minute Window Aggregation ---
-# Use timestamp from event
+# --- STEP 5: 1-Minute Window Aggregation with Debug Logs ---
 clock = EventClock(
-    ts_getter=lambda msg: datetime.fromtimestamp(msg["timestamp"], tz=timezone.utc),
-    wait_for_system_duration=timedelta(seconds=0)
+    ts_getter=lambda msg: datetime.fromtimestamp(
+        float(msg.get("timestamp", 0)), tz=timezone.utc
+    ),
+    wait_for_system_duration=timedelta(minutes=1)  # give some buffer for late events
 )
 
 windows = TumblingWindower(
-    length=timedelta(minutes=5),
+    length=timedelta(minutes=1),
     align_to=datetime(2025, 1, 1, tzinfo=timezone.utc)
 )
+
+def fold(acc, msg):
+    acc["order_count"] += 1
+    acc["total_quantity"] += int(msg.get("quantity", 0))
+    return acc
+
+# Debug: show messages entering the fold_window
+inspect("pre-window", keyed, lambda _id, msg: print("🧪 Window input:", msg))
 
 windowed = fold_window(
     "win",
@@ -100,10 +122,7 @@ windowed = fold_window(
     clock,
     windows,
     lambda: {"order_count": 0, "total_quantity": 0},
-    lambda acc, msg: {
-        "order_count": acc["order_count"] + 1,
-        "total_quantity": acc["total_quantity"] + int(msg.get("quantity", 0))
-    },
+    fold,
     lambda a, b: {
         "order_count": a["order_count"] + b["order_count"],
         "total_quantity": a["total_quantity"] + b["total_quantity"]
@@ -111,26 +130,43 @@ windowed = fold_window(
 )
 
 def write_window(_step_id, item):
-    start_str, data = item  # Bytewax 0.21.1 returns start_time as str
+    print("📥 Received window item:", item)
+
+    try:
+        key, (start_ts, data) = item
+        print("📥 Start time stamp", start_ts)
+        start_dt = datetime.fromtimestamp(start_ts, tz=timezone.utc)
+    except Exception as e:
+        print(f"⚠️ Invalid window start: {item} — {e}")
+        return
+
+    end_dt = start_dt + timedelta(minutes=1)
+
     os.makedirs("data", exist_ok=True)
     path = "data/windows.json"
+    print(f"📁 Writing to: {os.path.abspath(path)}")
 
     try:
         with open(path, "r") as f:
             existing = json.load(f)
-    except:
+    except Exception as e:
+        print(f"⚠️ Couldn't read windows.json: {e}")
         existing = []
 
-    existing.append({
-        "start": start_str,
-        "end": start_str,
-        "order_count": data["order_count"],
-        "total_quantity": data["total_quantity"]
-    })
+    try:
+        new_entry = {
+            "start": start_dt.isoformat(),
+            "end": end_dt.isoformat(),
+            "order_count": data["order_count"],
+            "total_quantity": data["total_quantity"]
+        }
+        existing.append(new_entry)
 
-    with open(path, "w") as f:
-        json.dump(existing, f, indent=2)
+        with open(path, "w") as f:
+            json.dump(existing, f, indent=2)
 
-    print("🪟 Wrote window:", start_str)
+        print("🪟 Wrote window:", new_entry)
+    except Exception as e:
+        print(f"❌ Failed to write window: {e}")
 
 inspect("window", windowed.down, write_window)

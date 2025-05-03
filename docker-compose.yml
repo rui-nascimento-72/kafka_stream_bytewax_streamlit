@@ -28,7 +28,13 @@ services:
     depends_on:
       - producer
       - kafka
-    restart: always
+    tty: true   # 👈 enables interactive terminal output
+    stdin_open: true
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   producer:
     build:

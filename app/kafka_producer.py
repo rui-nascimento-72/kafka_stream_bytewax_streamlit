@@ -17,7 +17,7 @@ while True:
 
 while True:
     event = {
-        "order_id": uuid.uuid4().int,
+        "order_id": str(uuid.uuid4().int),
         "item_id": random.randint(1, 1000),
         "client_id": random.randint(1, 100),
         "quantity": random.randint(1, 5),
