@@ -1,12 +1,10 @@
 # --- app.py ---
-import os
 import json
 import pandas as pd
 import streamlit as st
 import time
 import altair as alt
-import matplotlib.pyplot as plt
-from datetime import datetime
+
 
 st.set_page_config("📦 Order Dashboard", layout="wide")
 st.title("📦 Real-Time Order Dashboard")
