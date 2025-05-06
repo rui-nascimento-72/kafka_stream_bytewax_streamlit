@@ -13,7 +13,7 @@ flow = Dataflow("orders-pipeline")
 
 # --- Kafka Source ---
 source = KafkaSource(
-    brokers=["kafka:9092"],
+    brokers=["redpanda:9092"],
     topics=["orders-data"],
     tail=True,
     starting_offset=OFFSET_BEGINNING
