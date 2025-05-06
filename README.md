@@ -18,28 +18,6 @@ This project demonstrates a real-time data processing pipeline using Python 3.11
 - Visual Studio Code (recommended for development)
 - Basic knowledge of Kafka, Bytewax, and Streamlit
 
----
-
-## Project Structure
-
-.
-├── app/
-│   ├── [bytewax_processor.py](http://_vscodecontentref_/1)   # Bytewax data processing pipeline
-│   ├── [kafka_producer.py](http://_vscodecontentref_/2)      # Kafka producer for simulated data
-│   ├── [streamlit_app.py](http://_vscodecontentref_/3)       # Streamlit dashboard application
-├── data/                      # Directory for storing processed data
-├── docker/
-│   ├── [Dockerfile.bytewax](http://_vscodecontentref_/4)     # Dockerfile for Bytewax service
-│   ├── [Dockerfile.producer](http://_vscodecontentref_/5)    # Dockerfile for Kafka producer
-│   ├── [Dockerfile.streamlit](http://_vscodecontentref_/6)   # Dockerfile for Streamlit service
-├── [docker-compose.yml](http://_vscodecontentref_/7)         # Docker Compose file for Redpanda setup
-├── [docker-compose-kafka.yml](http://_vscodecontentref_/8)   # Alternative Kafka setup with Confluent Kafka
-├── [requirements.bytewax.txt](http://_vscodecontentref_/9)   # Python dependencies for Bytewax
-├── [requirements.producer.txt](http://_vscodecontentref_/10)  # Python dependencies for Kafka producer
-├── [requirements.streamlit.txt](http://_vscodecontentref_/11) # Python dependencies for Streamlit
-├── [streamlit_dashboard.py](http://_vscodecontentref_/12)     # Alternative Streamlit dashboard
-└── [README.md](http://_vscodecontentref_/13)                  # Project documentation
-
 ## Getting Started
 1. Clone the Repository
 
