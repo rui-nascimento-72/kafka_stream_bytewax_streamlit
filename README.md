@@ -54,9 +54,13 @@ Bytewax is a Python framework for building stateful stream processing applicatio
 Key components in this project:
 
 KafkaSource: Reads data from Redpanda.
+
 TumblingWindower: Performs 1-minute window aggregations.
+
 Stateful Aggregation: Tracks metrics like total orders and quantities.
+
 Redpanda
+
 Redpanda is a Kafka-compatible streaming platform designed for simplicity and performance. It replaces traditional Kafka brokers in this project.
 
 ## Streamlit
