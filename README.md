@@ -64,22 +64,36 @@ Streamlit is a Python library for building interactive dashboards. It is used to
 
 ## Development with Visual Studio Code
 Install the Python and Docker extensions.
+
 Open the project folder in VS Code.
+
 Use the integrated terminal to run Python scripts or Docker commands.
+
 Debug Streamlit apps directly in VS Code.
+
 Forking and Contributing
+
 Fork the repository on GitHub.
+
 Create a new branch for your feature or bugfix.
+
 Submit a pull request with a detailed description of your changes.
+
 Troubleshooting
+
 Redpanda not available: Ensure the redpanda service is running and accessible on port 9092.
+
 Streamlit errors: Check the logs for missing data files or incorrect paths.
+
 Bytewax issues: Verify the Kafka topic and broker configurations.
+
 License
 This project is licensed under the MIT License. See the LICENSE file for details.
 
 ## Acknowledgments
 Bytewax Documentation
+
 Redpanda Documentation
+
 Streamlit Documentation
 
