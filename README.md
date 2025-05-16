@@ -59,7 +59,7 @@ TumblingWindower: Performs 1-minute window aggregations.
 
 Stateful Aggregation: Tracks metrics like total orders and quantities.
 
-Redpanda
+## Redpanda
 
 Redpanda is a Kafka-compatible streaming platform designed for simplicity and performance. It replaces traditional Kafka brokers in this project.
 
@@ -96,8 +96,6 @@ This project is licensed under the MIT License. See the LICENSE file for details
 
 ## Acknowledgments
 Bytewax Documentation
-
 Redpanda Documentation
-
 Streamlit Documentation
 
