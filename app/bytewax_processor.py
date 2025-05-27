@@ -22,7 +22,6 @@ flow = Dataflow("orders-pipeline")
 #topics: Topic to consume messages from.
 #tail: Whether to consume new messages as they arrive.
 #starting_offset: Start consuming from the beginning of the topic.
-
 source = KafkaSource(
     brokers=["redpanda:9092"],
     topics=["orders-data"],
