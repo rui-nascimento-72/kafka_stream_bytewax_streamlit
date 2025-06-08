@@ -7,12 +7,24 @@
 # bytewax.operators.windowing: Provides tools for window-based aggregations.
 import os
 import json
+import time
+import logging
 from datetime import timedelta, datetime, timezone
 from confluent_kafka import OFFSET_BEGINNING
 from bytewax.dataflow import Dataflow
 from bytewax.connectors.kafka import KafkaSource
 from bytewax.operators import input, map, filter as op_filter, inspect, key_on, stateful_map
 from bytewax.operators.windowing import fold_window, TumblingWindower, EventClock
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,  # Set the default log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+    format="%(asctime)s [%(levelname)s] %(message)s",  # Log format
+    handlers=[
+        logging.StreamHandler()  # Output logs to the console
+    ]
+)
+
 #Initializes a Bytewax Dataflow named "orders-pipeline", which defines the processing pipeline.
 flow = Dataflow("orders-pipeline")
 
@@ -50,13 +62,12 @@ stream = op_filter("drop-none", stream, lambda x: x is not None)
 
 # --- STEP 2: Normalize Timestamps ---
 # normalize_timestamp: Converts timestamps to seconds if they are in milliseconds or nanoseconds.
+
+
+# Function to normalize timestamps in a message
 def normalize_timestamp(msg):
-    ts = msg.get("timestamp")
-    if ts:
-        if ts > 1e12:
-            msg["timestamp"] = ts / 1000.0
-        elif ts > 1e9:
-            msg["timestamp"] = float(ts)
+    dt = datetime.fromtimestamp(float(msg["timestamp"]), tz=timezone.utc).replace(microsecond=0)
+    msg["timestamp"] = int(dt.timestamp())
     return msg
 # map: Applies the normalization function to each message
 stream = map("normalize-ts", stream, normalize_timestamp)
@@ -124,19 +135,21 @@ inspect("metrics", agg, write_metrics)
 
 # --- STEP 5: 1-Minute Window Aggregation with Debug Logs ---
 #EventClock: Extracts timestamps from messages and waits for late events.
+def log_and_return_datetime(msg):
+    ts = datetime.fromtimestamp(msg["timestamp"]).replace(tzinfo=timezone.utc)
+    logging.info("⏰ Extracted timestamp from message: %s", ts)
+    return ts
+
 clock = EventClock(
-    ts_getter=lambda msg: datetime.fromtimestamp(
-        float(msg.get("timestamp", 0)), tz=timezone.utc
-    ),
-    wait_for_system_duration=timedelta(minutes=1)  # give some buffer for late events
+    ts_getter=lambda msg: log_and_return_datetime(msg),
+    wait_for_system_duration=timedelta(minutes=1)
 )
 
 #TumblingWindower: Defines 1-minute windows aligned to a specific start time.
 windows = TumblingWindower(
     length=timedelta(minutes=1),
-    align_to=datetime(2025, 1, 1, tzinfo=timezone.utc)
+    align_to=datetime.fromtimestamp(0, tz=timezone.utc)  # Align to Unix epoch start
 )
-
 #fold: Aggregates data within each window.
 def fold(acc, msg):
     acc["order_count"] += 1
@@ -144,12 +157,13 @@ def fold(acc, msg):
     return acc
 
 # Debug: show messages entering the fold_window
-inspect("pre-window", keyed, lambda _id, msg: print("🧪 Window input:", msg))
+keyed_window = key_on("windowing", stream, lambda _: "window_key")
+inspect("pre-window", keyed_window, lambda _id, msg: print("🧪 Window input:", msg))
 
 #fold_window: Applies the folding logic to the windowed data.
 windowed = fold_window(
     "win",
-    keyed,
+    keyed_window,
     clock,
     windows,
     lambda: {"order_count": 0, "total_quantity": 0},
@@ -162,12 +176,15 @@ windowed = fold_window(
 
 #write_window: Writes windowed results to data/windows.json.
 def write_window(_step_id, item):
-    print("📥 Received window item:", item)
+
+    logging.info("📥 Received window item: %s", item)
 
     try:
         key, (start_ts, data) = item
-        print("📥 Start time stamp", start_ts)
-        start_dt = datetime.fromtimestamp(start_ts, tz=timezone.utc)
+        
+        logging.info("📥 Start time stamp: %s", start_ts)
+    
+        start_dt = datetime.fromtimestamp(start_ts * 60, tz=timezone.utc)
     except Exception as e:
         print(f"⚠️ Invalid window start: {item} — {e}")
         return
